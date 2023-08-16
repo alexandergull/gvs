@@ -1,17 +1,17 @@
 <?php
 
 /*
- * Plugin Name:       CleanTalk plugins custom version installer
- * Plugin URI:        https://cleantalk.org
- * Description:       Handle the basics with this plugin.
+ * Plugin Name:       Gull's CT version selector.
+ * Plugin URI:        https://github.com/alexandergull/gvs
+ * Description:       Install any version of CleanTalk plugins.
  * Version:           1.0
  * Requires at least: 6.3
  * Requires PHP:      5.6
  * Author:            Alexander Gull
- * Author URI:        https://author.example.com/
- * License:           GPL v2 or later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Update URI:        https://example.com/my-plugin/
+ * Author URI:        https://github.com/alexandergull
+ * License:           GPL v3 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-3.0.html
+ * Update URI:        https://github.com/alexandergull/gvs
  * Text Domain:       gull-gvs
  * Domain Path:       /languages
  */
@@ -76,7 +76,7 @@ function gvs_menu_page()
 {
     add_menu_page(
         'Gull\'s versions selector',
-        'APBCT Version',
+        'CleanTalk versions',
         'manage_options',
         'gvs_page',
         'gvs_get_all_forms',
