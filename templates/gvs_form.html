@@ -1,0 +1,13 @@
+<form name="gvs-select-form" id="gvs-select-%PLUGIN_INNER_NAME%" method="post" action="">
+<div>
+    <p>Select version you want to install:</p>
+    <select name="gvs_select">
+        %GVS_OPTIONS%
+    </select>'
+</div>
+<div>
+    <p>WARNING: This action will delete all non-plugin files like .git or .idea. Be sure you know what do you do.</p>'
+</div>
+<input type="submit" value="Install">
+    <input type="hidden" name="plugin_inner_name" id="hidden_name_%PLUGIN_INNER_NAME%" value="%PLUGIN_INNER_NAME%">
+</form>
