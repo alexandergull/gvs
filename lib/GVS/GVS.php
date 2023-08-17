@@ -22,9 +22,9 @@ class GVS
 
         $this->plugins_data['spbct'] = new GVSPluginDataDTO(
             'spbct',
-            '1-cleantalk-spam-protect',
-            '/https:\/\/downloads\.wordpress\.org\/plugin\/cleantalk-spam-protect\.6\..*?zip/',
-            'apbct-packed.zip',
+            'security-malware-firewall',
+            '/https:\/\/downloads\.wordpress\.org\/plugin\/security-malware-firewall\.2\..*?zip/',
+            'spbct-packed.zip',
             wp_get_upload_dir()['path']
         );
     }
