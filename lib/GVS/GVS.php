@@ -6,6 +6,10 @@ class GVS
 
     public $process_plugin = GVSPluginDataDTO::class;
 
+    private $log;
+
+    private $log_path = GVS_PLUGIN_DIR . '\gvs.log';
+
     public function __construct()
     {
         $this->plugins_data['apbct'] = new GVSPluginDataDTO(
@@ -41,7 +45,6 @@ class GVS
     public function getDownloadInterfaceForm($plugin_inner_name)
     {
         $versions = $this->getVersionsList($plugin_inner_name);
-        gvs_log(GVS_PLUGIN_DIR . '/templates/gvs_form.html');
         $html = file_get_contents(GVS_PLUGIN_DIR . '/templates/gvs_form.html');
         $options = '';
         foreach ( $versions as $version ) {
@@ -49,13 +52,30 @@ class GVS
         }
         $html = str_replace('%GVS_OPTIONS%', $options, $html);
         $html = str_replace('%PLUGIN_INNER_NAME%', $plugin_inner_name, $html);
+        $html = str_replace('%PLUGIN_INNER_NAME_UPPER%', strtoupper($plugin_inner_name), $html);
+
+        return $html;
+    }
+
+    public function getLogLayout()
+    {
+        $html = file_get_contents(GVS_PLUGIN_DIR . '/templates/gvs_log_layout.html');
+        if (!$html) {
+            return 'LOG_FILE_TEMPLATE_READ_ERROR';
+        } else {
+            $content = $this->getLastLogContent();
+            if (empty($content)) {
+                $content = 'No log persists yet.';
+            }
+            $html = str_replace('%LOG_CONTENT%', $content, $html);
+        }
 
         return $html;
     }
 
     private function getVersionsList($plugin_inner_name)
     {
-        gvs_log("Api response proceed..");
+        $this->writeLog("Api response proceed..");
 
         $wp_api_response = @file_get_contents("https://api.wordpress.org/plugins/info/1.0/" . $this->plugins_data[$plugin_inner_name]->plugin_slug);
 
@@ -63,9 +83,9 @@ class GVS
             throw new \Exception('Empty API response');
         }
 
-        gvs_log("Api response successfully got.");
+        $this->writeLog("Api response successfully got.");
 
-        gvs_log("Seek for versions..\n");
+        $this->writeLog("Seek for versions..");
 
         preg_match_all($this->plugins_data[$plugin_inner_name]->search_regex, $wp_api_response, $versions_found);
 
@@ -88,7 +108,7 @@ class GVS
             throw new \Exception('This URL is not allowed.');
         }
 
-        gvs_log("Downloading content of $url to $output_path ...");
+        $this->writeLog("Downloading content of $url to $output_path ...");
 
         if ( !is_dir($output_path) ) {
             $result = mkdir($output_path, 0777, true);
@@ -103,7 +123,7 @@ class GVS
             throw new \Exception('Cannot get url content.');
         }
 
-        gvs_log("Writing " . $this->process_plugin->zip_path . "...");
+        $this->writeLog("Writing " . $this->process_plugin->zip_path . "...");
 
         $result = file_put_contents($this->process_plugin->zip_path, $version_content);
 
@@ -123,7 +143,7 @@ class GVS
             }
         }
 
-        gvs_log("Unpacking " . $this->process_plugin->zip_path . " ...");
+        $this->writeLog("Unpacking " . $this->process_plugin->zip_path . " ...");
 
         // init zip
         $zip = new ZipArchive();
@@ -144,7 +164,7 @@ class GVS
             throw new \Exception('Invalid completed temp path. Roll back..');
         }
 
-        gvs_log("Unpacking success: $new_version_dir");
+        $this->writeLog("Unpacking success: $new_version_dir");
 
         $this->process_plugin->new_version_dir = $new_version_dir;
 
@@ -183,30 +203,85 @@ class GVS
     public function replaceActivePlugin()
     {
         // enable maintenance mode
+        $this->writeLog('Enabling maintenance mode..');
         gvs_maintenance_mode__enable(120);
 
         // remove active plugin
         gvs_delete_folder_recursive($this->process_plugin->active_plugin_directory);
 
         // replace active plugin
+        $this->writeLog('Replacing active plugin ' . $this->process_plugin->active_plugin_directory);
         $result = copy_dir($this->process_plugin->new_version_dir, $this->process_plugin->active_plugin_directory);
         if ( !$result ) {
+            $this->writeLog('Disabling maintenance mode..');
             gvs_maintenance_mode__disable();
             throw new \Exception('Can not replace active plugin.');
         }
 
+        $this->writeLog('Disabling maintenance mode..');
         gvs_maintenance_mode__disable();
-
+        $this->writeLog('Replaced successfully.');
         return $this;
     }
 
     public function deleteTempFiles()
     {
-        gvs_log($this->plugins_data);
-        gvs_log("Delete temp files " . $this->process_plugin->temp_directory . " ...");
+        $this->writeLog("Delete temp files " . $this->process_plugin->temp_directory . " ...");
 
         gvs_delete_folder_recursive($this->process_plugin->temp_directory);
 
-        gvs_log("Deleting temp files success.");
+        $this->writeLog("Deleting temp files success.");
+        $this->writeLog("All done.");
+
+        return $this;
+    }
+
+    /**
+     * @param $msg
+     * @return void
+     */
+    public function writeLog($msg)
+    {
+        $this->log[] = current_time('Y-m-d H:i:s') . " " . $msg;
+    }
+
+    /**
+     * @param $type
+     * @return string
+     */
+    public function readLogAs($type = 'array') {
+        if (!empty($this->log)) {
+            if ($type === 'array') {
+                return $this->log;
+            } elseif ($type === 'string') {
+                return implode("\n", $this->log);
+            }
+        }
+        return '';
+    }
+
+    /**
+     * @return false|int
+     */
+    public function saveLog() {
+        $this->writeLog("Save log..");
+        return @file_put_contents($this->log_path, $this->readLogAs('string'));
+    }
+
+    public function getLastLogContent(){
+        if (is_file($this->log_path)){
+            $content = file_get_contents($this->log_path);
+            if (!empty($content)) {
+                $html = '<ul class="ul-disc">';
+                $log_array = explode("\n",$content);
+                foreach ($log_array as $row) {
+                    $p = "<li>$row</li>";
+                    $html .= $p;
+                }
+                $html .= '</ul>';
+                return ($html);
+            }
+        }
+        return '';
     }
 }

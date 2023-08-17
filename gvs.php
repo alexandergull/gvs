@@ -16,7 +16,6 @@
  * Domain Path:       /languages
  */
 
-define('GVS_DEBUG_DISPLAY', false);
 define('GVS_PLUGIN_DIR', __DIR__);
 
 
@@ -28,7 +27,7 @@ if ( empty($_POST) ) {
     add_action('admin_menu', 'gvs_menu_page', 25);
 }
 
-gvs_main();
+add_action('plugins_loaded', 'gvs_main');
 
 function gvs_main()
 {
@@ -48,26 +47,31 @@ function gvs_main()
                 ->prepareDirectories()
                 ->doBackup()
                 ->replaceActivePlugin()
-                ->deleteTempFiles();
+                ->deleteTempFiles()
+                ->saveLog();
 
-            gvs_log($gvs);
+            error_log('CTDEBUG: [' . __FUNCTION__ . '] [LOG]: ' . var_export($gvs->readLogAs(),true));
+            wp_redirect(get_admin_url() . '?page=gvs_page');
+            exit;
         }
 
     } catch ( \Exception $e ) {
-        gvs_log($e->getMessage());
+        $gvs->writeLog('ERROR: ' . $e->getMessage());
     }
 }
 
 function gvs_get_all_forms()
 {
     $gvs = new GVS();
-    $supported_plugins = $gvs->DetectSupportedPlugins();
     $html = '';
+    $supported_plugins = $gvs->DetectSupportedPlugins();
     foreach ( $supported_plugins as $plugin_inner_name => $status ) {
         if ( $status === 'active' ) {
             $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name);
         }
     }
+
+    $html .= $gvs->getLogLayout();
 
     echo $html;
 }
