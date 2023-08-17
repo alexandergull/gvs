@@ -60,11 +60,11 @@ function gvs_main()
     }
 }
 
-function gvs_get_all_forms()
+function gvs_construct_settings_page()
 {
     $gvs = new GVS();
-    $html = '';
-    $supported_plugins = $gvs->DetectSupportedPlugins();
+    $html = '<h1 style="margin: 15px">CleanTalk plugins versions selector</h1><br>';
+    $supported_plugins = $gvs->detectSupportedPlugins();
     foreach ( $supported_plugins as $plugin_inner_name => $status ) {
         if ( $status === 'active' ) {
             $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name);
@@ -72,6 +72,16 @@ function gvs_get_all_forms()
     }
 
     $html .= $gvs->getLogLayout();
+    $html .= '<div style="border-style: groove; margin: 15px; max-width: 60%">';
+    $html .= '<div id="gvs_support_wrap" style="margin: 15px">';
+    $html .= '<p><b>Needs help?</b></p>';
+    $html .= '<ul class="ul-square">';
+    $html .= '<li>TG: @alexthegull</li>';
+    $html .= '<li>mailto: alex.g@cleantalk.org</li>';
+    $html .= '</ul>';
+    $html .= '</div>';
+    $html .= '</div>';
+
 
     echo $html;
 }
@@ -83,7 +93,7 @@ function gvs_menu_page()
         'CleanTalk versions',
         'manage_options',
         'gvs_page',
-        'gvs_get_all_forms',
+        'gvs_construct_settings_page',
         'dashicons-images-alt2',
         20
     );

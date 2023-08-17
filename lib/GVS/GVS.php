@@ -29,7 +29,7 @@ class GVS
         );
     }
 
-    public function DetectSupportedPlugins()
+    public function detectSupportedPlugins()
     {
         $output = array();
         foreach ( $this->plugins_data as $plugin_datum ) {
