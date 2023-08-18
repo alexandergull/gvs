@@ -3,32 +3,35 @@
 class GVS
 {
     /**
+     * Array of GVSPluginDataObject. Keep here handling plugins data.
      * @var array
      */
     public $plugins_data = array();
-
     /**
+     * Selected plugin GVSPluginDataObject
      * @var GVSPluginDataObject
      */
-    public $process_plugin;
-
+    public $selected_plugin;
     /**
+     * Log of process operations.
      * @var array
      */
-    private $log;
-
+    private $stream_log;
     /**
+     * Path to GVS state file.
      * @var string
      */
     private $state_file = GVS_PLUGIN_DIR . '\files\state.gvs';
-
     /**
-     * @var
+     * Name of newly installed plugin used to show in interface.
+     * @var string
      */
     public $plugin_version_short_name;
 
     public function __construct()
     {
+        // init plugins data with GVSPluginDataObject instances
+
         $this->plugins_data['apbct'] = new GVSPluginDataObject(
             'apbct',
             'cleantalk-spam-protect',
@@ -55,18 +58,18 @@ class GVS
     }
 
     /**
-     * ==========
-     * State actions logic.
-     * ==========
+     * =====================
+     * ### STATE ACTIONS ###
+     * =====================
      */
 
-
     /**
+     * Read the state file key.
      * @param $key
      * @return false|mixed
      * @throws Exception
      */
-    public function readStateFile($key)
+    public function readStateFileKey($key)
     {
         if (is_file($this->state_file)) {
             $content = @file_get_contents($this->state_file);
@@ -80,12 +83,13 @@ class GVS
     }
 
     /**
+     * Write the state file key.
      * @param $key
      * @param $value
      * @return void
      * @throws Exception
      */
-    public function writeStateFile($key, $value)
+    public function writeStateFileKey($key, $value)
     {
         if (is_file($this->state_file)) {
             $state = (array)unserialize(file_get_contents($this->state_file));
@@ -101,17 +105,18 @@ class GVS
     }
 
     /**
+     * Save process log to the state key.
      * @return void
      * @throws Exception
      */
     public function saveLogToState() {
-        $this->writeStreamLog("Save log..");
-        $log = !empty($this->log) ? $this->log : '';
-        $this->writeStateFile('log', $log);
+        $this->writeStreamLog("Save process log..");
+        $log = !empty($this->stream_log) ? $this->stream_log : '';
+        $this->writeStateFileKey('log', $log);
     }
 
-
     /**
+     * Set notice to show in interface.
      * @param $text
      * @param $type
      * @return void
@@ -119,25 +124,27 @@ class GVS
      */
     public function setNotice($text, $type)
     {
-        $this->writeStateFile('notice', array('text' => $text, 'type' => $type));
+        $this->writeStateFileKey('notice', array('text' => $text, 'type' => $type));
     }
 
     /**
-     * @param $msg
+     * Write stream log single record.
+     * @param $record
      * @return void
      */
-    public function writeStreamLog($msg)
+    public function writeStreamLog($record)
     {
-        $this->log[] = current_time('Y-m-d H:i:s') . " " . $msg;
+        $this->stream_log[] = current_time('Y-m-d H:i:s') . " " . $record;
     }
 
     /**
-     * ==========
-     * Main logic.
-     * ==========
+     * ==================
+     * ### MAIN LOGIC ###
+     * ==================
      */
 
     /**
+     * Check filesystem to know if plugins is presented.
      * @return array|false
      */
     public function detectSupportedPlugins()
@@ -153,45 +160,58 @@ class GVS
         return !empty($output) ? $output : false;
     }
 
+    /**
+     * Get URLs of versions can be downloaded. Check WP API and custom GitHub links.
+     * @param $plugin_inner_name
+     * @return string[]
+     * @throws Exception
+     */
     private function getVersionsList($plugin_inner_name)
     {
-        $this->writeStreamLog("Api response proceed..");
-
+        // add WP links
+        $this->writeStreamLog($plugin_inner_name . ": WP API request..");
         $wp_api_response = @file_get_contents("https://api.wordpress.org/plugins/info/1.0/" . $this->plugins_data[$plugin_inner_name]->plugin_slug);
-
         if ( empty($wp_api_response) ) {
             throw new \Exception('Empty API response');
         }
-
-        $this->writeStreamLog("Api response successfully got.");
-
-        $this->writeStreamLog("Seek for versions..");
-
+        $this->writeStreamLog($plugin_inner_name . ": Seek for WP versions..");
         preg_match_all($this->plugins_data[$plugin_inner_name]->wp_api_response_search_regex, $wp_api_response, $versions_found);
 
-
         if ( empty($versions_found) ) {
-            throw new \Exception('No versions found');
+            throw new \Exception($plugin_inner_name . ": No WP versions found");
         }
-
         $versions_found = $versions_found[0];
+        $this->writeStreamLog($plugin_inner_name . ": WP versions added.");
 
-        array_unshift($versions_found, $this->plugins_data[$plugin_inner_name]->github_links[0], $this->plugins_data[$plugin_inner_name]->github_links[1]);
+        // add github links
+        foreach ($this->plugins_data[$plugin_inner_name]->github_links as $link) {
+            array_unshift($versions_found, $link);
+        }
+        $this->writeStreamLog($plugin_inner_name . ": GitHub versions added.");
 
         $versions_found = array_unique($versions_found);
 
-        $this->writeStateFile('links_for_' . $plugin_inner_name, $versions_found);
+        // save urls list to speed up further check
+        $this->writeStateFileKey('links_for_' . $plugin_inner_name, $versions_found);
+
+        $this->saveLogToState();
 
         return $versions_found;
     }
 
+    /**
+     * Liquid interface. Replace already installed plugin.
+     * @param $url
+     * @return void
+     * @throws Exception
+     */
     public function replacePlugin($url){
         // run processes
         $this->downloadPluginZip($url)
             ->unpackZip()
             ->prepareDirectories('rewrite')
             ->doBackup()
-            ->replacePluginFiles()
+            ->rewritePluginFiles()
             ->deleteTempFiles()
             ->saveLogToState();
 
@@ -199,12 +219,18 @@ class GVS
         $this->setNotice('Plugin '. $this->plugin_version_short_name .' successfully replaced.', 'success');
     }
 
+    /**
+     * Liquid interface. Install new plugin instance.
+     * @param $url
+     * @return void
+     * @throws Exception
+     */
     public function installPlugin($url){
         // run processes
         $this->downloadPluginZip($url)
             ->unpackZip()
             ->prepareDirectories('install')
-            ->setPluginFiles()
+            ->createPluginFiles()
             ->deleteTempFiles()
             ->saveLogToState();
 
@@ -212,17 +238,23 @@ class GVS
         $this->setNotice('Plugin '. $this->plugin_version_short_name .' successfully installed.', 'success');
     }
 
+    /**
+     * Download plugin zip file.
+     * @param $url string URL to get zip content
+     * @return $this
+     * @throws Exception
+     */
     public function downloadPluginZip($url)
     {
-        $output_path = $this->process_plugin->new_version_zip_directory;
+        $output_path = $this->selected_plugin->new_version_zip_directory;
 
-        $versions = $this->readStateFile('links_for_' . $this->process_plugin->inner_name);
+        $versions = $this->readStateFileKey('links_for_' . $this->selected_plugin->inner_name);
 
         if ( !in_array($url, $versions) ) {
             throw new \Exception('This URL is not allowed: ' . $url);
         }
 
-        $this->plugin_version_short_name = gvs_get_plugin_version_short_name($url, $this->process_plugin);
+        $this->plugin_version_short_name = gvs_get_plugin_version_short_name($url, $this->selected_plugin);
 
         $this->writeStreamLog("Downloading content of $url to $output_path ...");
 
@@ -239,9 +271,9 @@ class GVS
             throw new \Exception('Cannot get url content.');
         }
 
-        $this->writeStreamLog("Writing " . $this->process_plugin->zip_path . "...");
+        $this->writeStreamLog("Writing " . $this->selected_plugin->zip_path . "...");
 
-        $result = file_put_contents($this->process_plugin->zip_path, $version_content);
+        $result = file_put_contents($this->selected_plugin->zip_path, $version_content);
 
         if ( empty($result) ) {
             throw new \Exception('Cannot write file.');
@@ -250,63 +282,75 @@ class GVS
         return $this;
     }
 
+    /**
+     * Unpack downloaded zip file.
+     * @return $this
+     * @throws Exception
+     */
     public function unpackZip()
     {
-        if ( !is_dir($this->process_plugin->new_version_folder_directory) ) {
-            $result = mkdir($this->process_plugin->new_version_folder_directory, 0777, true);
+        if ( !is_dir($this->selected_plugin->new_version_folder_directory) ) {
+            $result = mkdir($this->selected_plugin->new_version_folder_directory, 0777, true);
             if ( !$result ) {
                 throw new \Exception('Invalid temp dir path');
             }
         }
 
-        $this->writeStreamLog("Unpacking " . $this->process_plugin->zip_path . " ...");
+        $this->writeStreamLog("Unpacking " . $this->selected_plugin->zip_path . " ...");
 
         // init zip
         $zip = new ZipArchive();
         // open
-        $zip->open($this->process_plugin->zip_path);
+        $zip->open($this->selected_plugin->zip_path);
 
         // collect the main folder name in zip
         $plugin_folder_name = $zip->getNameIndex(0);
         $plugin_folder_name = substr($plugin_folder_name, 0, strlen($plugin_folder_name) - 1);
-        $new_version_dir = $this->process_plugin->new_version_folder_directory . '/' . $plugin_folder_name;
+        $new_version_dir = $this->selected_plugin->new_version_folder_directory . '/' . $plugin_folder_name;
 
         // do extract
-        $zip->extractTo($this->process_plugin->new_version_folder_directory);
+        $zip->extractTo($this->selected_plugin->new_version_folder_directory);
         // close
         $zip->close();
 
         $this->writeStreamLog("Check directory: $new_version_dir");
 
-        // exclusions for github zips
+        // exclusions for GitHub zips
         if ( !is_dir($new_version_dir) ) {
-            $new_version_dir = $this->process_plugin->new_version_folder_directory;
+            $new_version_dir = $this->selected_plugin->new_version_folder_directory;
             if ( !is_dir($new_version_dir) ) {
+                //todo Implement rollback
                 throw new \Exception('Invalid completed temp path ' . $new_version_dir . '. Roll back..');
             }
         }
 
         $this->writeStreamLog("Unpacking success: $new_version_dir");
 
-        $this->process_plugin->new_version_dir = $new_version_dir;
+        $this->selected_plugin->new_version_dir = $new_version_dir;
 
         return $this;
     }
 
+    /**
+     * Check and prepare directories for further work with files.
+     * @param $mode string 'rewrite' or 'install'
+     * @return $this
+     * @throws Exception
+     */
     public function prepareDirectories($mode)
     {
         // delete if backup path already persists
-        if ($mode === 'rewrite' && is_dir($this->process_plugin->backup_plugin_directory) ) {
-            gvs_delete_folder_recursive($this->process_plugin->backup_plugin_directory);
+        if ($mode === 'rewrite' && is_dir($this->selected_plugin->backup_plugin_directory) ) {
+            gvs_delete_folder_recursive($this->selected_plugin->backup_plugin_directory);
         }
 
         // check if active plugin directory exists
-        if ($mode === 'rewrite' && !is_dir($this->process_plugin->active_plugin_directory) ) {
+        if ($mode === 'rewrite' && !is_dir($this->selected_plugin->active_plugin_directory) ) {
             throw new \Exception('Invalid active plugin path');
         }
 
-        if ($mode === 'install' && !is_dir($this->process_plugin->active_plugin_directory) ) {
-            $result = mkdir($this->process_plugin->active_plugin_directory);
+        if ($mode === 'install' && !is_dir($this->selected_plugin->active_plugin_directory) ) {
+            $result = mkdir($this->selected_plugin->active_plugin_directory);
             if (!$result) {
                 throw new \Exception('Can not create plugin folder.');
             }
@@ -320,27 +364,37 @@ class GVS
         return $this;
     }
 
+    /**
+     * Do backup of current installed files.
+     * @return $this
+     * @throws Exception
+     */
     public function doBackup()
     {
-        $result = copy_dir($this->process_plugin->active_plugin_directory, $this->process_plugin->backup_plugin_directory);
+        $result = copy_dir($this->selected_plugin->active_plugin_directory, $this->selected_plugin->backup_plugin_directory);
         if ( !$result ) {
             throw new \Exception('Can not backup active plugin.');
         }
         return $this;
     }
 
-    public function replacePluginFiles()
+    /**
+     * Rewrite existing plugin folder with downloaded version.
+     * @return $this
+     * @throws Exception
+     */
+    public function rewritePluginFiles()
     {
         // enable maintenance mode
         $this->writeStreamLog('Enabling maintenance mode..');
         gvs_maintenance_mode__enable(120);
 
         // remove active plugin
-        gvs_delete_folder_recursive($this->process_plugin->active_plugin_directory);
+        gvs_delete_folder_recursive($this->selected_plugin->active_plugin_directory);
 
         // replace active plugin
-        $this->writeStreamLog('Rewrite active plugin files ' . $this->process_plugin->active_plugin_directory);
-        $result = copy_dir($this->process_plugin->new_version_dir, $this->process_plugin->active_plugin_directory);
+        $this->writeStreamLog('Rewrite active plugin files ' . $this->selected_plugin->active_plugin_directory);
+        $result = copy_dir($this->selected_plugin->new_version_dir, $this->selected_plugin->active_plugin_directory);
         if ( !$result ) {
             $this->writeStreamLog('Disabling maintenance mode..');
             gvs_maintenance_mode__disable();
@@ -353,11 +407,16 @@ class GVS
         return $this;
     }
 
-    public function setPluginFiles()
+    /**
+     * Create files of downloaded version. Use this if no current version installed.
+     * @return $this
+     * @throws Exception
+     */
+    public function createPluginFiles()
     {
         // replace active plugin
-        $this->writeStreamLog('Install active plugin ' . $this->process_plugin->active_plugin_directory);
-        $result = copy_dir($this->process_plugin->new_version_dir, $this->process_plugin->active_plugin_directory);
+        $this->writeStreamLog('Install active plugin ' . $this->selected_plugin->active_plugin_directory);
+        $result = copy_dir($this->selected_plugin->new_version_dir, $this->selected_plugin->active_plugin_directory);
         if ( !$result ) {
             throw new \Exception('Can not install active plugin.');
         }
@@ -366,11 +425,15 @@ class GVS
         return $this;
     }
 
+    /**
+     * Clear all temp files.
+     * @return $this
+     */
     public function deleteTempFiles()
     {
-        $this->writeStreamLog("Delete temp files " . $this->process_plugin->temp_directory . " ...");
+        $this->writeStreamLog("Delete temp files " . $this->selected_plugin->temp_directory . " ...");
 
-        gvs_delete_folder_recursive($this->process_plugin->temp_directory);
+        gvs_delete_folder_recursive($this->selected_plugin->temp_directory);
 
         $this->writeStreamLog("Deleting temp files success.");
         $this->writeStreamLog("All done.");
@@ -379,9 +442,9 @@ class GVS
     }
 
     /**
-     * ==========
-     * Interface logic.
-     * ==========
+     * =================
+     * ### INTERFACE ###
+     * =================
      */
 
     /**
@@ -447,7 +510,7 @@ class GVS
      */
     private function getLastLogContent(){
         if (is_file($this->state_file)){
-            $log_content = $this->readStateFile('log');
+            $log_content = $this->readStateFileKey('log');
             if (!empty($log_content)) {
                 $html = '<ul class="ul-disc">';
                 foreach ($log_content as $row) {
@@ -469,7 +532,7 @@ class GVS
     public function getNoticeLayout()
     {
         $html = '';
-        $notice = $this->readStateFile('notice');
+        $notice = $this->readStateFileKey('notice');
         if (!empty($notice) && isset($notice['text'], $notice['type'])) {
             if ($notice['type'] === 'error') {
                 $color = 'red';
@@ -483,7 +546,7 @@ class GVS
             $html = str_replace('%NOTICE_COLOR%', $color, $html);
         }
         // delete notice after first show
-        $this->writeStateFile('notice','');
+        $this->writeStateFileKey('notice','');
         return $html;
     }
 

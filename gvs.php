@@ -46,7 +46,7 @@ function gvs_main()
         if ( $work_with_plugin && $url ) {
 
             // set plugin slug as working with
-            $gvs->process_plugin = $gvs->plugins_data[$work_with_plugin];
+            $gvs->selected_plugin = $gvs->plugins_data[$work_with_plugin];
 
             // run processes
             if ($action === 'rewrite') {
