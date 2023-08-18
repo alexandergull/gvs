@@ -22,6 +22,11 @@ class GVS
      */
     private $state_file = GVS_PLUGIN_DIR . '\files\state.gvs';
 
+    /**
+     * @var
+     */
+    public $plugin_version_short_name;
+
     public function __construct()
     {
         $this->plugins_data['apbct'] = new GVSPluginDataDTO(
@@ -189,6 +194,8 @@ class GVS
         if ( !in_array($url, $versions) ) {
             throw new \Exception('This URL is not allowed: ' . $url);
         }
+
+        $this->plugin_version_short_name = gvs_get_plugin_version_short_name($url);
 
         $this->writeStreamLog("Downloading content of $url to $output_path ...");
 

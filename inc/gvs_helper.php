@@ -1,15 +1,4 @@
 <?php
-function gvs_log($msg)
-{
-    error_log('AVS_DEBUG: ' . var_export($msg,true));
-    if (GVS_DEBUG_DISPLAY) {
-        if (is_string($msg)) {
-            echo $msg . "\n";
-        } else {
-            echo var_export($msg) . "\n";
-        }
-    }
-}
 
 function gvs_delete_folder_recursive($path)
 {
@@ -81,4 +70,20 @@ function gvs_prepare_filesystem()
     }
 
     return true;
+}
+
+function gvs_get_plugin_version_short_name($url)
+{
+    $regex_github = '/download\/([a-z,0-9].*)\/' . $this->process_plugin->plugin_slug . '/';
+    preg_match_all('/plugin\/([a-z,0-9].*\.zip)/', $url,$matches_wp);
+    preg_match_all($regex_github, $url,$matches_github);
+
+    if (isset($matches_wp[1],$matches_wp[1][0])) {
+        $short = $matches_wp[1][0];
+    }
+    if (isset($matches_github[1],$matches_github[1][0])) {
+        $short = $this->process_plugin->inner_name . '-' .  $matches_github[1][0];
+    }
+
+    return !empty($short) ? $short : $this->process_plugin->inner_name;
 }

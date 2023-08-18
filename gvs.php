@@ -57,7 +57,7 @@ function gvs_main()
                 ->saveLogToState();
 
             // add a notice of success
-            $gvs->setNotice('Plugin succesfully replaced.', 'success');
+            $gvs->setNotice('Plugin '. $gvs->plugin_version_short_name .' successfully replaced.', 'success');
 
             // do redirect
             wp_redirect(get_admin_url() . '?page=gvs_page');
@@ -69,7 +69,7 @@ function gvs_main()
         $gvs->saveLogToState();
 
         // add a notice of error
-        $gvs->setNotice('Error occurred:' . $e->getMessage(), 'error');
+        $gvs->setNotice('Error occurred during installation of ' . $gvs->plugin_version_short_name . ':' . $e->getMessage(), 'error');
 
         // do redirect
         wp_redirect(get_admin_url() . '?page=gvs_page');
