@@ -185,6 +185,33 @@ class GVS
         return $versions_found;
     }
 
+    public function replacePlugin($url){
+        // run processes
+        $this->downloadPluginZip($url)
+            ->unpackZip()
+            ->prepareDirectories('rewrite')
+            ->doBackup()
+            ->replacePluginFiles()
+            ->deleteTempFiles()
+            ->saveLogToState();
+
+        // add a notice of success
+        $this->setNotice('Plugin '. $this->plugin_version_short_name .' successfully replaced.', 'success');
+    }
+
+    public function installPlugin($url){
+        // run processes
+        $this->downloadPluginZip($url)
+            ->unpackZip()
+            ->prepareDirectories('install')
+            ->setPluginFiles()
+            ->deleteTempFiles()
+            ->saveLogToState();
+
+        // add a notice of success
+        $this->setNotice('Plugin '. $this->plugin_version_short_name .' successfully installed.', 'success');
+    }
+
     public function downloadPluginZip($url)
     {
         $output_path = $this->process_plugin->new_version_zip_directory;
@@ -195,7 +222,7 @@ class GVS
             throw new \Exception('This URL is not allowed: ' . $url);
         }
 
-        $this->plugin_version_short_name = gvs_get_plugin_version_short_name($url);
+        $this->plugin_version_short_name = gvs_get_plugin_version_short_name($url, $this->process_plugin);
 
         $this->writeStreamLog("Downloading content of $url to $output_path ...");
 
@@ -266,16 +293,23 @@ class GVS
         return $this;
     }
 
-    public function prepareDirectories()
+    public function prepareDirectories($mode)
     {
         // delete if backup path already persists
-        if ( is_dir($this->process_plugin->backup_plugin_directory) ) {
+        if ($mode === 'rewrite' && is_dir($this->process_plugin->backup_plugin_directory) ) {
             gvs_delete_folder_recursive($this->process_plugin->backup_plugin_directory);
         }
 
         // check if active plugin directory exists
-        if ( !is_dir($this->process_plugin->active_plugin_directory) ) {
+        if ($mode === 'rewrite' && !is_dir($this->process_plugin->active_plugin_directory) ) {
             throw new \Exception('Invalid active plugin path');
+        }
+
+        if ($mode === 'install' && !is_dir($this->process_plugin->active_plugin_directory) ) {
+            $result = mkdir($this->process_plugin->active_plugin_directory);
+            if (!$result) {
+                throw new \Exception('Can not create plugin folder.');
+            }
         }
 
         // prepare filesystem
@@ -295,7 +329,7 @@ class GVS
         return $this;
     }
 
-    public function replaceActivePlugin()
+    public function replacePluginFiles()
     {
         // enable maintenance mode
         $this->writeStreamLog('Enabling maintenance mode..');
@@ -305,7 +339,7 @@ class GVS
         gvs_delete_folder_recursive($this->process_plugin->active_plugin_directory);
 
         // replace active plugin
-        $this->writeStreamLog('Replacing active plugin ' . $this->process_plugin->active_plugin_directory);
+        $this->writeStreamLog('Rewrite active plugin files ' . $this->process_plugin->active_plugin_directory);
         $result = copy_dir($this->process_plugin->new_version_dir, $this->process_plugin->active_plugin_directory);
         if ( !$result ) {
             $this->writeStreamLog('Disabling maintenance mode..');
@@ -315,7 +349,20 @@ class GVS
 
         $this->writeStreamLog('Disabling maintenance mode..');
         gvs_maintenance_mode__disable();
-        $this->writeStreamLog('Replaced successfully.');
+        $this->writeStreamLog('Rewrote successfully.');
+        return $this;
+    }
+
+    public function setPluginFiles()
+    {
+        // replace active plugin
+        $this->writeStreamLog('Install active plugin ' . $this->process_plugin->active_plugin_directory);
+        $result = copy_dir($this->process_plugin->new_version_dir, $this->process_plugin->active_plugin_directory);
+        if ( !$result ) {
+            throw new \Exception('Can not install active plugin.');
+        }
+
+        $this->writeStreamLog('Installed successfully.');
         return $this;
     }
 
@@ -343,17 +390,31 @@ class GVS
      * @return array|false|string|string[]
      * @throws Exception
      */
-    public function getDownloadInterfaceForm($plugin_inner_name)
+    public function getDownloadInterfaceForm($plugin_inner_name, $action)
     {
         $versions = $this->getVersionsList($plugin_inner_name);
         $html = file_get_contents(GVS_PLUGIN_DIR . '/templates/gvs_form.html');
         $options = '';
+        $attention = '';
         foreach ( $versions as $version ) {
             $options .= '<option value="'. esc_url($version) . '">' . esc_url($version) . '</option>';
         }
         $html = str_replace('%GVS_OPTIONS%', $options, $html);
         $html = str_replace('%PLUGIN_INNER_NAME%', $plugin_inner_name, $html);
         $html = str_replace('%PLUGIN_INNER_NAME_UPPER%', strtoupper($plugin_inner_name), $html);
+        if ($action === 'rewrite') {
+            $plugin_action = 'Rewrite';
+            $attention = 'WARNING: This action will delete all non-plugin files like .git or .idea. Be sure you know what do you do.';
+            $plugin_meta = 'Plugin persists in file system, files will be rewrote: ' . $this->plugins_data[$plugin_inner_name]->active_plugin_directory;
+        } elseif ($action === 'install') {
+            $plugin_action = 'Install';
+            $plugin_meta = 'Plugin does not persist in file system, files will be placed to: ' . $this->plugins_data[$plugin_inner_name]->active_plugin_directory;
+        }
+        if (!empty($plugin_meta)) {
+            $html = str_replace('%PLUGIN_META%', $plugin_meta, $html);
+            $html = str_replace('%PLUGIN_ACTION%', $plugin_action, $html);
+        }
+        $html = str_replace('%ATTENTION%', $attention, $html);
 
         return $html;
     }

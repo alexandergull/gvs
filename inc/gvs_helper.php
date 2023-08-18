@@ -72,9 +72,9 @@ function gvs_prepare_filesystem()
     return true;
 }
 
-function gvs_get_plugin_version_short_name($url)
+function gvs_get_plugin_version_short_name($url, $process_plugin)
 {
-    $regex_github = '/download\/([a-z,0-9].*)\/' . $this->process_plugin->plugin_slug . '/';
+    $regex_github = '/download\/([a-z,0-9].*)\/' . $process_plugin->plugin_slug . '/';
     preg_match_all('/plugin\/([a-z,0-9].*\.zip)/', $url,$matches_wp);
     preg_match_all($regex_github, $url,$matches_github);
 
@@ -82,8 +82,8 @@ function gvs_get_plugin_version_short_name($url)
         $short = $matches_wp[1][0];
     }
     if (isset($matches_github[1],$matches_github[1][0])) {
-        $short = $this->process_plugin->inner_name . '-' .  $matches_github[1][0];
+        $short = $process_plugin->inner_name . '-' .  $matches_github[1][0];
     }
 
-    return !empty($short) ? $short : $this->process_plugin->inner_name;
+    return !empty($short) ? $short : $process_plugin->inner_name;
 }

@@ -41,6 +41,7 @@ function gvs_main()
         // check if supported plugins installed
         $work_with_plugin = isset($_POST['plugin_inner_name']) ? $_POST['plugin_inner_name'] : null;
         $url = isset($_POST['gvs_select']) ? $_POST['gvs_select'] : null;
+        $action = isset($_POST['plugin_action']) ? strtolower($_POST['plugin_action']) : null;
 
         if ( $work_with_plugin && $url ) {
 
@@ -48,16 +49,13 @@ function gvs_main()
             $gvs->process_plugin = $gvs->plugins_data[$work_with_plugin];
 
             // run processes
-            $gvs->downloadPluginZip($url)
-                ->unpackZip()
-                ->prepareDirectories()
-                ->doBackup()
-                ->replaceActivePlugin()
-                ->deleteTempFiles()
-                ->saveLogToState();
+            if ($action === 'rewrite') {
+                $gvs->replacePlugin($url);
+            }
 
-            // add a notice of success
-            $gvs->setNotice('Plugin '. $gvs->plugin_version_short_name .' successfully replaced.', 'success');
+            if ($action === 'install') {
+                $gvs->installPlugin($url);
+            }
 
             // do redirect
             wp_redirect(get_admin_url() . '?page=gvs_page');
@@ -91,7 +89,9 @@ function gvs_construct_settings_page()
     $supported_plugins = $gvs->detectSupportedPlugins();
     foreach ( $supported_plugins as $plugin_inner_name => $status ) {
         if ( $status === 'active' ) {
-            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name);
+            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name, 'rewrite');
+        } elseif ($status === 'inactive') {
+            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name, 'install');
         }
     }
 
