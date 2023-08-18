@@ -187,7 +187,7 @@ class GVS
         $versions = $this->readStateFile('links_for_' . $this->process_plugin->inner_name);
 
         if ( !in_array($url, $versions) ) {
-            throw new \Exception('This URL is not allowed.');
+            throw new \Exception('This URL is not allowed: ' . $url);
         }
 
         $this->writeStreamLog("Downloading content of $url to $output_path ...");
@@ -342,7 +342,7 @@ class GVS
         $html = file_get_contents(GVS_PLUGIN_DIR . '/templates/gvs_form.html');
         $options = '';
         foreach ( $versions as $version ) {
-            $options .= "<option value='$version'>$version</option>";
+            $options .= '<option value="'. esc_url($version) . '">' . esc_url($version) . '</option>';
         }
         $html = str_replace('%GVS_OPTIONS%', $options, $html);
         $html = str_replace('%PLUGIN_INNER_NAME%', $plugin_inner_name, $html);
@@ -383,7 +383,7 @@ class GVS
             if (!empty($log_content)) {
                 $html = '<ul class="ul-disc">';
                 foreach ($log_content as $row) {
-                    $p = "<li>$row</li>";
+                    $p = "<li>" . esc_html($row) . "</li>";
                     $html .= $p;
                 }
                 $html .= '</ul>';
@@ -409,7 +409,7 @@ class GVS
             if ($notice['type'] === 'success') {
                 $color = 'green';
             }
-            $p = '<p style="margin: 15px"><b>' . $notice['text'] . '</b></p>';
+            $p = '<p style="margin: 15px"><b>' . esc_html($notice['text']) . '</b></p>';
             $html = file_get_contents(GVS_PLUGIN_DIR . '/templates/gvs_notice.html');
             $html = str_replace('%NOTICE_CONTENT%', $p, $html);
             $html = str_replace('%NOTICE_COLOR%', $color, $html);
