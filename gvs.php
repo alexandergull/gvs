@@ -20,7 +20,7 @@ define('GVS_PLUGIN_DIR', __DIR__);
 
 require_once('inc/gvs_helper.php');
 require_once('lib/GVS/GVS.php');
-require_once('lib/GVS/GVSPluginDataDTO.php');
+require_once('lib/GVS/GVSPluginDataObject.php');
 
 if ( empty($_POST) ) {
     add_action('admin_menu', 'gvs_menu_page', 25);

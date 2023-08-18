@@ -1,18 +1,66 @@
 <?php
 
-class GVSPluginDataDTO
+class GVSPluginDataObject
 {
+    /**
+     * Plugin name for internal usage.
+     * @var string
+     */
     public $inner_name;
+    /**
+     * Plugin slug as it presented in the WP filesystem.
+     * @var string
+     */
     public $plugin_slug;
+    /**
+     * Regex to find URLs in the WordPress API response.
+     * @var string
+     */
     public $wp_api_response_search_regex;
+    /**
+     * Custom GitHub links to download.
+     * @var string
+     */
     public $github_links;
+    /**
+     * ZIP file name should be used after downloading.
+     * @var string
+     */
     public $zip_name;
+    /**
+     * Path where to keep unzipped files.
+     * @var string
+     */
     public $new_version_folder_directory;
+    /**
+     * Path where to keep zip file.
+     * @var string
+     */
     public $new_version_zip_directory;
+    /**
+     * Global GVS temp directory.
+     * @var string
+     */
     public $temp_directory;
+    /**
+     * Path where installed plugin can be found.
+     * @var string
+     */
     public $active_plugin_directory;
+    /**
+     * Path where do backup of installed plugin.
+     * @var string
+     */
     public $backup_plugin_directory;
+    /**
+     * Full zip path after download.
+     * @var string
+     */
     public $zip_path;
+    /**
+     * Path to extract downloaded zip.
+     * @var string
+     */
     public $new_version_dir;
 
     public function __construct($inner_name,

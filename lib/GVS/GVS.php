@@ -8,7 +8,7 @@ class GVS
     public $plugins_data = array();
 
     /**
-     * @var GVSPluginDataDTO
+     * @var GVSPluginDataObject
      */
     public $process_plugin;
 
@@ -29,7 +29,7 @@ class GVS
 
     public function __construct()
     {
-        $this->plugins_data['apbct'] = new GVSPluginDataDTO(
+        $this->plugins_data['apbct'] = new GVSPluginDataObject(
             'apbct',
             'cleantalk-spam-protect',
             '/https:\/\/downloads\.wordpress\.org\/plugin\/cleantalk-spam-protect\.6\..*?zip/',
@@ -41,7 +41,7 @@ class GVS
             )
         );
 
-        $this->plugins_data['spbct'] = new GVSPluginDataDTO(
+        $this->plugins_data['spbct'] = new GVSPluginDataObject(
             'spbct',
             'security-malware-firewall',
             '/https:\/\/downloads\.wordpress\.org\/plugin\/security-malware-firewall\.2\..*?zip/',
