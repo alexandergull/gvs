@@ -21,7 +21,7 @@ class GVS
      * Path to GVS state file.
      * @var string
      */
-    private $state_file = GVS_PLUGIN_DIR . '\files\state.gvs';
+    private $state_file = GVS_PLUGIN_DIR . '/files/state.gvs';
     /**
      * Name of newly installed plugin used to show in interface.
      * @var string
