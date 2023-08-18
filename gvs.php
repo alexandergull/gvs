@@ -22,14 +22,11 @@ require_once('inc/gvs_helper.php');
 require_once('lib/GVS/GVS.php');
 require_once('lib/GVS/GVSPluginDataObject.php');
 
-if ( empty($_POST) ) {
-    add_action('admin_menu', 'gvs_menu_page', 25);
-}
-
+add_action('admin_menu', 'gvs_menu_page', 25);
 add_action('plugins_loaded', 'gvs_main');
 
 /**
- * Init main logic via fluid interface if POST contains GVS signs.
+ * Init main logic.
  * @return void
  * @throws Exception
  */
@@ -82,9 +79,11 @@ function gvs_main()
 function gvs_construct_settings_page()
 {
     $gvs = new GVS();
+
     // header
     $html = '<h1 style="margin: 15px">CleanTalk plugins versions selector</h1><br>';
     $html .= $gvs->getNoticeLayout();
+
     // detect supported plugins and build forms for each of them
     $supported_plugins = $gvs->detectSupportedPlugins();
     foreach ( $supported_plugins as $plugin_inner_name => $status ) {
@@ -108,7 +107,7 @@ function gvs_construct_settings_page()
 function gvs_menu_page()
 {
     add_menu_page(
-        'Gull\'s versions selector',
+        'Gull\'s Versions Selector',
         'CleanTalk versions',
         'manage_options',
         'gvs_page',
