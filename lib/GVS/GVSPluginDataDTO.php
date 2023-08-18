@@ -4,7 +4,8 @@ class GVSPluginDataDTO
 {
     public $inner_name;
     public $plugin_slug;
-    public $search_regex;
+    public $wp_api_response_search_regex;
+    public $github_links;
     public $zip_name;
     public $new_version_folder_directory;
     public $new_version_zip_directory;
@@ -18,11 +19,12 @@ class GVSPluginDataDTO
                                 $plugin_slug,
                                 $search_regex,
                                 $zip_name,
-                                $temp_directory)
+                                $temp_directory,
+                                $github_links)
     {
         $this->inner_name = $inner_name;
         $this->plugin_slug = $plugin_slug;
-        $this->search_regex = $search_regex;
+        $this->wp_api_response_search_regex = $search_regex;
         $this->zip_name = $zip_name;
         $this->active_plugin_directory = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
         $this->temp_directory = str_replace('\\', '/', $temp_directory) . '/gvs/' . $this->plugin_slug;
@@ -30,6 +32,7 @@ class GVSPluginDataDTO
         $this->new_version_folder_directory = $this->temp_directory . '/new_version';
         $this->new_version_zip_directory = $this->temp_directory . '/zip';
         $this->zip_path = $this->new_version_zip_directory . '/' . $this->zip_name;
+        $this->github_links = $github_links;
     }
 
 }
