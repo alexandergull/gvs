@@ -4,7 +4,7 @@
  * Plugin Name:       Gull's CT version selector.
  * Plugin URI:        https://github.com/alexandergull/gvs
  * Description:       Install any version of CleanTalk plugins.
- * Version:           1.2.1
+ * Version:           1.2.2
  * Requires at least: 6.3
  * Requires PHP:      5.6
  * Author:            Alexander Gull

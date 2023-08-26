@@ -1,5 +1,7 @@
 <?php
 
+use WpOrg\Requests\Transport\Curl;
+
 class GVS
 {
     /**
@@ -46,6 +48,10 @@ class GVS
             array(
                 'https://github.com/CleanTalk/wordpress-antispam/releases/download/dev-version/cleantalk-spam-protect.zip',
                 'https://github.com/CleanTalk/wordpress-antispam/releases/download/fix-version/cleantalk-spam-protect.zip'
+            ),
+            array(
+                'CleanTalk',
+                'wordpress-antispam'
             )
         );
 
@@ -58,6 +64,10 @@ class GVS
             array(
                 'https://github.com/CleanTalk/security-malware-firewall/releases/download/dev-version/security-malware-firewall.zip',
                 'https://github.com/CleanTalk/security-malware-firewall/releases/download/fix-version/security-malware-firewall.zip'
+            ),
+            array(
+                'CleanTalk',
+                'security-malware-firewall'
             )
         );
     }
@@ -187,14 +197,62 @@ class GVS
      */
     private function getVersionsList($plugin_inner_name)
     {
+
+        //GitHub branches
+        $this->writeStreamLog($plugin_inner_name . ": Github API request..");
+        $url = "https://api.github.com/repos/"
+            . $this->plugins_data[$plugin_inner_name]->github_owner . '/'
+            . $this->plugins_data[$plugin_inner_name]->github_slug . '/branches';
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Accept: application/vnd.github+json',
+            'X-GitHub-Api-Version: 2022-11-28',
+            'User-Agent:GVS 1.2.1'
+        ]);
+        $data = curl_exec($ch);
+        curl_close($ch);
+
+        $github_api_response = json_decode($data,ARRAY_A);
+
+        if ( empty($github_api_response) ) {
+            throw new \Exception('Empty GitHub API response');
+        }
+
+        $this->writeStreamLog($plugin_inner_name . ": Seek for GitHub branches..");
+
+
+        $github_api_branches_names = array_map(function ($key) {
+            return isset($key['name']) && !in_array($key['name'], array('dev','fix', 'master')) ? $key['name'] : null;
+        }, $github_api_response);
+
+        $github_api_branches_names = array_filter($github_api_branches_names, function ($key) {
+            return $key;
+        });
+
+        $github_branches_links = [];
+
+        foreach ($github_api_branches_names as $branch_name) {
+            $download_github_zip_url = "https://github.com/"
+                . $this->plugins_data[$plugin_inner_name]->github_owner . '/'
+                . $this->plugins_data[$plugin_inner_name]->github_slug . '/archive/refs/heads/'
+                . $branch_name
+                . '.zip';
+            $github_branches_links[] = $download_github_zip_url;
+        }
+
+        $this->writeStreamLog($plugin_inner_name . ": Github branches added.");
+
         // add WP links
         $this->writeStreamLog($plugin_inner_name . ": WP API request..");
-        $wp_api_response = @file_get_contents("https://api.wordpress.org/plugins/info/1.0/" . $this->plugins_data[$plugin_inner_name]->plugin_slug);
-        if ( empty($wp_api_response) ) {
-            throw new \Exception('Empty API response');
+        $github_api_response = @file_get_contents("https://api.wordpress.org/plugins/info/1.0/" . $this->plugins_data[$plugin_inner_name]->plugin_slug);
+        if ( empty($github_api_response) ) {
+            throw new \Exception('Empty WP API response');
         }
         $this->writeStreamLog($plugin_inner_name . ": Seek for WP versions..");
-        preg_match_all($this->plugins_data[$plugin_inner_name]->wp_api_response_search_regex, $wp_api_response, $versions_found);
+        preg_match_all($this->plugins_data[$plugin_inner_name]->wp_api_response_search_regex, $github_api_response, $versions_found);
 
         if ( empty($versions_found) ) {
             throw new \Exception($plugin_inner_name . ": No WP versions found");
@@ -203,6 +261,9 @@ class GVS
         $this->writeStreamLog($plugin_inner_name . ": WP versions added.");
 
         // add github links
+        foreach ($github_branches_links as $link) {
+            array_unshift($versions_found, $link);
+        }
         foreach ($this->plugins_data[$plugin_inner_name]->github_links as $link) {
             array_unshift($versions_found, $link);
         }

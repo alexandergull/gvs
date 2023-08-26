@@ -17,11 +17,13 @@ class GVSPluginDataObject
      * @var string
      */
     public $wp_api_response_search_regex;
+    public $github_owner;
+    public $github_slug;
     /**
      * Custom GitHub links to download.
      * @var string
      */
-    public $github_links;
+    public $github_branches_credentials;
     /**
      * ZIP file name should be used after downloading.
      * @var string
@@ -68,7 +70,8 @@ class GVSPluginDataObject
                                 $search_regex,
                                 $zip_name,
                                 $temp_directory,
-                                $github_links)
+                                $github_links,
+                                $github_branches_credentials)
     {
         $this->inner_name = $inner_name;
         $this->plugin_slug = $plugin_slug;
@@ -81,6 +84,8 @@ class GVSPluginDataObject
         $this->new_version_zip_directory = $this->temp_directory . '/zip';
         $this->zip_path = $this->new_version_zip_directory . '/' . $this->zip_name;
         $this->github_links = $github_links;
+        $this->github_owner = $github_branches_credentials[0];
+        $this->github_slug = $github_branches_credentials[1];
     }
 
 }
