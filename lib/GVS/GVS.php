@@ -89,14 +89,28 @@ class GVS
      * @return void
      * @throws Exception
      */
-    public function writeStateFileKey($key, $value)
+    public function writeStateFileKey($key, $value, $add_value_to_array = false)
     {
         if (is_file($this->state_file)) {
             $state = (array)unserialize(file_get_contents($this->state_file));
         } else {
             $state = array();
         }
-        $state[$key] = $value;
+
+        if ($add_value_to_array) {
+            if (!isset($state[$key]) || !is_array($state[$key])) {
+                $state[$key] = [];
+            }
+            if (!is_array($value)) {
+                $state[$key][] = $value;
+            } elseif (is_array($value)) {
+                foreach ($value as $row) {
+                    $state[$key][] = $row;
+                }
+            }
+        } else {
+            $state[$key] = $value;
+        }
         $buffer = serialize($state);
         $result = @file_put_contents($this->state_file, $buffer);
         if (!$result) {
@@ -111,8 +125,8 @@ class GVS
      */
     public function saveLogToState() {
         $this->writeStreamLog("Save process log..");
-        $log = !empty($this->stream_log) ? $this->stream_log : '';
-        $this->writeStateFileKey('log', $log);
+        $log = !empty($this->stream_log) ? $this->stream_log : [];
+        $this->writeStateFileKey('log', $log, true);
     }
 
     /**
@@ -512,10 +526,16 @@ class GVS
         if (is_file($this->state_file)){
             $log_content = $this->readStateFileKey('log');
             if (!empty($log_content)) {
+                $limit = 50;
+                $i = 0;
                 $html = '<ul class="ul-disc">';
                 foreach ($log_content as $row) {
+                    if ($i === $limit) {
+                        break;
+                    }
                     $p = "<li>" . esc_html($row) . "</li>";
                     $html .= $p;
+                    $i++;
                 }
                 $html .= '</ul>';
                 return ($html);
