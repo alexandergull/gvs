@@ -16,6 +16,11 @@ class GVS
      * Log of process operations.
      * @var array
      */
+    private $log_limit = 25;
+    /**
+     * Log of process operations.
+     * @var array
+     */
     private $stream_log;
     /**
      * Path to GVS state file.
@@ -89,14 +94,28 @@ class GVS
      * @return void
      * @throws Exception
      */
-    public function writeStateFileKey($key, $value)
+    public function writeStateFileKey($key, $value, $add_value_to_array = false)
     {
         if (is_file($this->state_file)) {
             $state = (array)unserialize(file_get_contents($this->state_file));
         } else {
             $state = array();
         }
-        $state[$key] = $value;
+
+        if ($add_value_to_array) {
+            if (!isset($state[$key]) || !is_array($state[$key])) {
+                $state[$key] = [];
+            }
+            if (!is_array($value)) {
+                $state[$key][] = $value;
+            } elseif (is_array($value)) {
+                foreach ($value as $row) {
+                    $state[$key][] = $row;
+                }
+            }
+        } else {
+            $state[$key] = $value;
+        }
         $buffer = serialize($state);
         $result = @file_put_contents($this->state_file, $buffer);
         if (!$result) {
@@ -111,8 +130,8 @@ class GVS
      */
     public function saveLogToState() {
         $this->writeStreamLog("Save process log..");
-        $log = !empty($this->stream_log) ? $this->stream_log : '';
-        $this->writeStateFileKey('log', $log);
+        $log = !empty($this->stream_log) ? $this->stream_log : [];
+        $this->writeStateFileKey('log', $log, true);
     }
 
     /**
@@ -193,8 +212,6 @@ class GVS
 
         // save urls list to speed up further check
         $this->writeStateFileKey('links_for_' . $plugin_inner_name, $versions_found);
-
-        $this->saveLogToState();
 
         return $versions_found;
     }
@@ -498,6 +515,7 @@ class GVS
                 $content = 'No log persists yet.';
             }
             $html = str_replace('%LOG_CONTENT%', $content, $html);
+            $html = str_replace('%LOG_LIMIT%', $this->log_limit, $html);
         }
 
         return $html;
@@ -511,17 +529,32 @@ class GVS
     private function getLastLogContent(){
         if (is_file($this->state_file)){
             $log_content = $this->readStateFileKey('log');
+            $log_content = array_reverse($log_content);
             if (!empty($log_content)) {
+                $i = 0;
                 $html = '<ul class="ul-disc">';
                 foreach ($log_content as $row) {
+                    if ($i === $this->log_limit) {
+                        break;
+                    }
                     $p = "<li>" . esc_html($row) . "</li>";
                     $html .= $p;
+                    $i++;
                 }
                 $html .= '</ul>';
+                $this->trimLogs();
                 return ($html);
             }
         }
         return '';
+    }
+
+    private function trimLogs()
+    {
+        $log_content = $this->readStateFileKey('log');
+        $log_content = array_slice($log_content, 0, $this->log_limit);
+
+        $this->writeStateFileKey('log', $log_content);
     }
 
     /**
