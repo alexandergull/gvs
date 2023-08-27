@@ -1,7 +1,6 @@
 <?php
 
 use WpOrg\Requests\Transport\Curl;
-
 class GVS
 {
     /**
@@ -86,6 +85,10 @@ class GVS
      */
     public function readStateFileKey($key)
     {
+        if (!is_file($this->state_file)) {
+            file_put_contents($this->state_file,'');
+        }
+
         if (is_file($this->state_file)) {
             $content = @file_get_contents($this->state_file);
             if (false === $content) {
@@ -543,6 +546,7 @@ class GVS
         $html = str_replace('%GVS_OPTIONS%', $options, $html);
         $html = str_replace('%PLUGIN_INNER_NAME%', $plugin_inner_name, $html);
         $html = str_replace('%PLUGIN_INNER_NAME_UPPER%', strtoupper($plugin_inner_name), $html);
+        $html = str_replace('%REACT_APP%', GVS_PLUGIN_DIR . '\src\react\my-app\src\App.js', $html);
         if ($action === 'rewrite') {
             $plugin_action = 'Rewrite';
             $attention = 'WARNING: This action will delete all non-plugin files like .git or .idea. Be sure you know what do you do.';
