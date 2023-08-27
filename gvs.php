@@ -24,6 +24,22 @@ require_once('lib/GVS/GVSPluginDataObject.php');
 
 add_action('admin_menu', 'gvs_menu_page', 25);
 add_action('plugins_loaded', 'gvs_main');
+add_action('admin_enqueue_scripts', function(){
+    error_log('CTDEBUG: [' . __FUNCTION__ . '] [admin_enqueue_scripts ]: ' . var_export(plugins_url('src/react/', __FILE__) . 'App.js',true));
+    wp_enqueue_script(
+        'gvs-app-js',
+        plugins_url('src/react/', __FILE__) . 'app.js',
+        array(),
+        1.3,
+        true
+    );
+    wp_enqueue_style(
+        'gvs-app-css',
+        plugins_url('src/react/', __FILE__) . 'app.css',
+        array(),
+        1.3,
+    );
+});
 
 /**
  * Init main logic.
@@ -78,27 +94,29 @@ function gvs_main()
  */
 function gvs_construct_settings_page()
 {
-    $gvs = new GVS();
+//    $gvs = new GVS();
+//
+//    // header
+//    $html = '<h1 style="margin: 15px">CleanTalk plugins versions selector</h1><br>';
+//    $html .= $gvs->getNoticeLayout();
+//
+//    // detect supported plugins and build forms for each of them
+//    $supported_plugins = $gvs->detectSupportedPlugins();
+//    foreach ( $supported_plugins as $plugin_inner_name => $status ) {
+//        if ( $status === 'active' ) {
+//            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name, 'rewrite');
+//        } elseif ($status === 'inactive') {
+//            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name, 'install');
+//        }
+//    }
+//    $gvs->saveLogToState();
+//
+//    $html .= $gvs->getLogLayout();
+//    $html .= $gvs->getSupportLayout();
 
-    // header
-    $html = '<h1 style="margin: 15px">CleanTalk plugins versions selector</h1><br>';
-    $html .= $gvs->getNoticeLayout();
 
-    // detect supported plugins and build forms for each of them
-    $supported_plugins = $gvs->detectSupportedPlugins();
-    foreach ( $supported_plugins as $plugin_inner_name => $status ) {
-        if ( $status === 'active' ) {
-            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name, 'rewrite');
-        } elseif ($status === 'inactive') {
-            $html .= $gvs->getDownloadInterfaceForm($plugin_inner_name, 'install');
-        }
-    }
-    $gvs->saveLogToState();
 
-    $html .= $gvs->getLogLayout();
-    $html .= $gvs->getSupportLayout();
-
-    echo $html;
+    echo file_get_contents(GVS_PLUGIN_DIR . '/src/react/index.html');
 }
 
 /**

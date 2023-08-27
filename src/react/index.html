@@ -1,0 +1,43 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,800">
+<script crossorigin src="https://unpkg.com/react@15/dist/react.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
+<script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+<script src="https://soulwire.github.io/sketch.js/js/sketch.min.js"></script>
+<script type="text/babel">
+    // Тут будет код на React.
+    function MainDocDiv() {
+        return (
+            <div className='gsv-main-div'>
+                <h1>ROOT</h1>
+                <BlockWrapper />
+                <BlockWrapper />
+                <BlockWrapper />
+                <BlockWrapper />
+            </div>
+        );
+    }
+
+    function BlockWrapper() {
+        return (
+            <div className='gsv-block-wrap'>
+                <Container />
+            </div>
+        );
+    }
+
+    function OurFirstComponent() {
+        return (
+            <h1>I am the child!</h1>
+        );
+    }
+    function Container() {
+        return (
+            <div>
+                <h1>I am the parent!</h1>
+                <OurFirstComponent />
+            </div>
+        );
+    }
+    const placeWeWantToPutComponent = document.getElementById('wpbody-content');
+    ReactDOM.render(<MainDocDiv />, placeWeWantToPutComponent);
+</script>
